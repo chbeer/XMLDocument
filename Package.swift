@@ -24,12 +24,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "JebiXML",
+    name: "XMLDocument",
     products: [
         // Products define the executables and libraries produced by a package, and make them visible to other packages.
         .library(
-            name: "JebiXML",
-            targets: ["JebiXML"]),
+            name: "XMLDocument",
+            targets: ["XMLDocument"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -37,19 +37,22 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "JebiXML",
-            dependencies: ["libxml2XMLDocument"],
+            name: "XMLDocument",
+            dependencies: ["libxml2"],
             path: "Sources/XMLDocument"),
         .testTarget(
             name: "XMLDocumentTests",
-            dependencies: ["JebiXML"]),
-        .systemLibrary(
-            name: "libxml2XMLDocument",
-            path: "Sources/libxml2",
-            pkgConfig: "libxml-2.0",
-            providers: [
-                .brew(["libxml2"]),
-//                .apt(["libxml2-dev"])
-            ]),
+            dependencies: ["XMLDocument"]),
+        
+        .systemLibrary(name: "libxml2")
+        
+//        .systemLibrary(
+//            name: "libxml2XMLDocument",
+//            path: "Sources/libxml2",
+//            pkgConfig: "libxml-2.0",
+//            providers: [
+//                .brew(["libxml2"]),
+////                .apt(["libxml2-dev"])
+//            ]),
     ]
 )

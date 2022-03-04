@@ -53,6 +53,13 @@ open class XMLDocument: XMLNode {
         super.init(nodePtr: nil, owner: nil)
     }
     
+    @objc
+    public init(version: String = "1.0") {
+        _docPtr = xmlNewDoc(UnsafeRawPointer(version).assumingMemoryBound(to: xmlChar.self))
+        
+        super.init(nodePtr: nil, owner: nil)
+    }
+    
     deinit {
         if owner == nil, let doc = _docPtr {
             xmlFreeDoc(doc)
@@ -69,10 +76,20 @@ open class XMLDocument: XMLNode {
         let root = _docPtr.flatMap { xmlDocGetRootElement($0) }
         return root.map { XMLElement(nodePtr: $0, owner: self) }
     }
+    open func setRootElement(_ root: XMLElement) {
+        root.withNodePtr {
+            xmlDocSetRootElement(_docPtr, $0)
+            root.owner = self
+        }
+    }
     
     override func withNodePtr<Result>(body: (xmlNodePtr?) throws -> Result) rethrows -> Result {
         guard let pointer = _docPtr else { return try body(nil) }
         return try pointer.withMemoryRebound(to: xmlNode.self, capacity: 1, body)
+    }
+    
+    open func addChild(_ node: XMLNode) {
+        rootElement()?.addChild(node)
     }
 }
 
@@ -205,8 +222,17 @@ open class XMLElement: XMLNode {
 }
 
 open class XMLNode {
-    open class func element(withName name: String) -> Any {
-        return XMLElement(name: name)
+    open class func element(withName name: String,
+                            children: [XMLElement]? = nil,
+                            attributes: [XMLNode]? = nil) -> Any {
+        let e = XMLElement(name: name)
+        for c in children ?? [] {
+            e.addChild(c)
+        }
+        for a in attributes ?? [] {
+            e.addAttribute(a)
+        }
+        return e
     }
     
     open class func element(withName name: String, stringValue string: String) -> Any {
@@ -223,6 +249,13 @@ open class XMLNode {
         let pointer = xmlNewText(stringValue)
         assert(pointer != nil)
         return XMLNode(nodePtr: pointer, owner: nil)
+    }
+    
+    open class func namespace(withName name: String, stringValue: String) -> Any {
+        return ""
+//        let pointer = xmlNewNs
+//        assert(pointer != nil)
+//        return XMLElement. XMLNode(nodePtr: pointer, owner: nil)
     }
     
     open var stringValue: String? {
@@ -246,6 +279,9 @@ open class XMLNode {
                 xmlFree(escaped)
             }
         }
+    }
+    open func setStringValue(_ value: String, resolvingEntities: Bool) {
+        stringValue = value
     }
     
     open var children: [XMLNode]? {
