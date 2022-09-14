@@ -115,6 +115,26 @@ open class XMLElement: XMLNode {
             return try pointer.withMemoryRebound(to: xmlNode.self, capacity: 1, body)
         }
     }
+    public class Namespace: XMLNode {
+        private let pointer: xmlNsPtr?
+        
+        init(pointer: xmlNsPtr?, owner: XMLNode?) {
+            self.pointer = pointer
+            
+            super.init(nodePtr: nil, owner: owner)
+        }
+        
+        deinit {
+            if owner == nil, let pointer = pointer {
+                xmlFreeNs(pointer)
+            }
+        }
+        
+        func withNsPtr<Result>(body: (xmlNsPtr?) throws -> Result) rethrows -> Result {
+            guard let pointer = pointer else { return try body(nil) }
+            return try pointer.withMemoryRebound(to: xmlNs.self, capacity: 1, body)
+        }
+    }
     
     public convenience init(name: String, stringValue string: String? = nil) {
         let node = xmlNewNode(nil, name)
@@ -177,6 +197,24 @@ open class XMLElement: XMLNode {
                 xmlAddChild(element, cur)
                 
                 attribute.owner = self
+            }
+        }
+    }
+    
+    open func addNamespace(_ namespace: XMLNode) {
+        guard let namespace = namespace as? Namespace else { return }
+        withNodePtr { parent in
+            namespace.withNsPtr {
+                guard let element = parent, let cur = $0 else {
+                    assertionFailure()
+                    return
+                }
+                xmlSetNs(element, cur)
+                if element.pointee.nsDef == nil {
+                    element.pointee.nsDef = cur
+                }
+
+                namespace.owner = self
             }
         }
     }
@@ -251,11 +289,10 @@ open class XMLNode {
         return XMLNode(nodePtr: pointer, owner: nil)
     }
     
-    open class func namespace(withName name: String, stringValue: String) -> Any {
-        return ""
-//        let pointer = xmlNewNs
-//        assert(pointer != nil)
-//        return XMLElement. XMLNode(nodePtr: pointer, owner: nil)
+    open class func namespace(withName name: String?, stringValue: String) -> Any {
+        let pointer = xmlNewNs(nil, stringValue, name)
+        assert(pointer != nil)
+        return XMLElement.Namespace(pointer: pointer, owner: nil)
     }
     
     open var stringValue: String? {
