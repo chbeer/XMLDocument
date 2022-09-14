@@ -42,20 +42,20 @@ open class XMLDocument: XMLNode {
         let xml = String(data: data, encoding: encoding)
         
         guard let charsetName = CFStringConvertEncodingToIANACharSetName(CFStringConvertNSStringEncodingToEncoding(encoding.rawValue)) as String?,
-            let cur = xml?.cString(using: encoding) else {
+            let cur = xml else {
                 throw XMLError.invalidStringEncoding
         }
         let url: String = ""
         let option = 0
         // FIXME: xmlParseMemory?
-        _docPtr = xmlReadDoc(UnsafeRawPointer(cur).assumingMemoryBound(to: xmlChar.self), url, charsetName, CInt(option))
+        _docPtr = cur.withXmlString { xmlReadDoc($0, url, charsetName, CInt(option)) }
         
         super.init(nodePtr: nil, owner: nil)
     }
     
     @objc
     public init(version: String = "1.0") {
-        _docPtr = xmlNewDoc(UnsafeRawPointer(version).assumingMemoryBound(to: xmlChar.self))
+        _docPtr = version.withXmlString { xmlNewDoc($0) }
         
         super.init(nodePtr: nil, owner: nil)
     }
@@ -429,5 +429,12 @@ open class XMLNode {
         default:
             return XMLNode(nodePtr: pointer, owner: self)
         }
+    }
+}
+
+extension String {
+    func withXmlString<T>(handler: (UnsafePointer<xmlChar>) throws -> T) rethrows -> T {
+        let xmlstr = self.utf8CString.map { xmlChar(bitPattern: $0) }
+        return try xmlstr.withUnsafeBufferPointer { try handler($0.baseAddress!) }
     }
 }
